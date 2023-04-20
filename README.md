@@ -63,3 +63,33 @@
             housing_cat_1hot = cat_encoder.fit_transform(housing_cat)
             # なぜかSciPyの疎行列なのでNumPyに変換
             housing_cat_1hot.toarray()
+    - カスタム変換器
+        - BaseEstimatorを継承
+            - よくわからないが便利らしい。勉強が必要
+        - ~~~python
+            # 二つの属性を組み合わせて新たな属性を追加するための変換器
+            # １世帯当たりの部屋数、１世帯当たりの人数、必要であれば寝室の割合を新たな属性として追加
+            from sklearn.base import BaseEstimator, TransformerMixin
+            # 部屋数、寝室数、人口、世帯数の列番号
+            rooms_ix, bedrooms_ix, population_ix, households_ix = 3, 4, 5, 6
+            
+            class CombinedAttributesAdder(BaseEstimator, TransformerMixin):
+                # デフォルトで寝室の割合を追加するようにしておく
+                # 属性の効果を調べられるようにするためにフラグで管理
+                def __init__(self, add_bedrooms_per_room = True):
+                    self.add_bedrooms_per_room = add_bedrooms_per_room
+                def fit(self, X, y=None):
+                    return self
+                def transform(self, X):
+                    # 見ての通り、属性を作っていく
+                    rooms_per_household = X[:, rooms_ix] / X[:, households_ix]
+                    population_per_household = X[:, population_ix] / X[:, households_ix]
+                if self.add_bedrooms_per_room:
+                    bedrooms_per_room = X[:, bedrooms_ix] / X[:, rooms_ix]
+                    return np.c_[X, rooms_per_household, population_per_household, bedrooms_per_room]
+                else:
+                    return np.c_[X, rooms_per_household, population_per_household]
+
+            # 実行例
+            attr_adder = CombinedAttributesAdder(add_bedrooms_per_room=False)
+            housing_extra_attribs = attr_adder.transform(housing.values)
